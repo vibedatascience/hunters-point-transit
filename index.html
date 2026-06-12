@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Center Blvd Transit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0b1026;
+  --panel:#11183a;
+  --amber:#ffb300;
+  --amber-dim:#8a6a1d;
+  --flushing:#b933ad;
+  --ferry:#2da8c9;
+  --white:#eef1ff;
+  --muted:#7f88b5;
+  --soon:#3ddc84;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--night);
+  color:var(--white);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:24px 16px 40px;
+}
+header{width:100%;max-width:560px;margin-bottom:18px}
+.stopname{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:22px;font-weight:600;margin-top:4px}
+.board{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+.row{
+  background:var(--panel);
+  border:1px solid #1d2752;
+  border-radius:14px;
+  padding:18px 20px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:8px;
+}
+.route{
+  font-family:'VT323',monospace;
+  font-size:44px;
+  color:var(--amber);
+  line-height:1;
+  text-shadow:0 0 14px rgba(255,179,0,.45);
+}
+.route.train{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:52px;height:52px;border-radius:50%;
+  background:var(--flushing);color:#fff;
+  font-size:40px;text-shadow:none;
+  box-shadow:0 0 16px rgba(185,51,173,.5);
+}
+.route.ferry{
+  color:var(--ferry);
+  text-shadow:0 0 14px rgba(45,168,201,.5);
+}
+.route.bike{
+  color:#4d8dff;
+  text-shadow:0 0 14px rgba(77,141,255,.5);
+}
+.eta.empty{color:#ff5b5b;text-shadow:0 0 18px rgba(255,91,91,.5)}
+.dest{font-size:13px;color:var(--muted);margin-top:4px}
+.eta{
+  font-family:'VT323',monospace;
+  font-size:84px;line-height:.9;
+  color:var(--amber);text-align:right;
+  text-shadow:0 0 18px rgba(255,179,0,.5);
+}
+.eta.soon{color:var(--soon);text-shadow:0 0 18px rgba(61,220,132,.5)}
+.eta small{font-size:26px;color:var(--amber-dim)}
+.sub{grid-column:1 / -1;display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px dashed #232e60;padding-top:10px;margin-top:6px}
+.none{font-family:'VT323',monospace;font-size:30px;color:var(--amber-dim);text-align:right}
+footer{margin-top:22px;font-size:12px;color:var(--muted);display:flex;gap:14px;align-items:center}
+button{
+  background:none;border:1px solid #2a3568;color:var(--white);
+  border-radius:8px;padding:6px 14px;font-family:inherit;font-size:12px;cursor:pointer;
+}
+button:focus-visible{outline:2px solid var(--amber)}
+.err{color:#ff7676;font-size:13px;margin-top:10px;max-width:560px}
+@media (prefers-reduced-motion:no-preference){
+  .eta.soon{animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.55}}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="stopname">Next departures &middot; Hunters Point</div>
+  <h1>5203 Center Boulevard</h1>
+</header>
+
+<div class="board" id="board"></div>
+<div class="err" id="err"></div>
+
+<footer>
+  <span id="updated">loading&hellip;</span>
+  <button id="refresh">Refresh</button>
+</footer>
+
+<script>
+const BUS_URL = "https://bustime.mta.info/api/stop-for-id?stopId=MTA_505506";
+const SUBWAY_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs";
+const BUS_ROUTES = ["Q101","Q103"];
+
+const FERRY_SCHEDULE = {"wd":{"34":[366,391,416,440,465,490,514,539,564,588,613,665,702,739,776,813,850,887,924,961,994,1024,1054,1081,1111,1141,1168,1208,1245,1282,1319],"wall":[380,405,430,454,479,504,528,553,578,602,630,682,719,756,793,830,867,904,941,979,1012,1042,1072,1099,1129,1159,1186,1203,1225,1262]},"we":{"34":[560,622,652,680,706,732,758,784,810,836,862,888,914,962,988,1014,1040,1066,1092,1118,1144,1170,1196,1222,1248,1274,1310],"wall":[553,611,651,684,712,738,764,790,816,842,868,894,920,957,994,1020,1046,1072,1098,1124,1150,1176,1202,1228,1266]}};
+
+function minutesUntil(epochOrIso){
+  const t = typeof epochOrIso === "number" ? epochOrIso * 1000 : new Date(epochOrIso).getTime();
+  return Math.round((t - Date.now()) / 60000);
+}
+
+async function fetchBuses(){
+  const r = await fetch(BUS_URL);
+  if (!r.ok) throw new Error("bus HTTP " + r.status);
+  const data = await r.json();
+  const visits = data?.siri?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
+  const byRoute = {};
+  for (const v of visits){
+    const j = v.MonitoredVehicleJourney;
+    if (!BUS_ROUTES.includes(j.PublishedLineName)) continue;
+    const call = j.MonitoredCall || {};
+    const t = call.ExpectedArrivalTime || call.ExpectedDepartureTime || call.AimedArrivalTime || j.OriginAimedDepartureTime;
+    if (!t) continue;
+    const mins = minutesUntil(t);
+    if (mins < -1) continue;
+    (byRoute[j.PublishedLineName] ||= []).push({
+      mins: Math.max(mins, 0),
+      dest: j.DestinationName || "",
+      dist: call.Extensions?.Distances?.PresentableDistance || ""
+    });
+  }
+  for (const k in byRoute) byRoute[k].sort((a,b)=>a.mins-b.mins);
+  return byRoute;
+}
+
+function readVarint(buf, pos){
+  let result = 0n, shift = 0n, b;
+  do { b = BigInt(buf[pos.i++]); result |= (b & 0x7Fn) << shift; shift += 7n; } while (b & 0x80n);
+  return result;
+}
+function parseMsg(buf, start, end){
+  const fields = {};
+  const pos = {i: start};
+  while (pos.i < end){
+    const tag = Number(readVarint(buf, pos));
+    const field = tag >> 3, wire = tag & 7;
+    let val;
+    if (wire === 0) val = readVarint(buf, pos);
+    else if (wire === 2){
+      const len = Number(readVarint(buf, pos));
+      val = [pos.i, pos.i + len];
+      pos.i += len;
+    }
+    else if (wire === 5){ val = null; pos.i += 4; }
+    else if (wire === 1){ val = null; pos.i += 8; }
+    else break;
+    (fields[field] ||= []).push(val);
+  }
+  return fields;
+}
+const dec = new TextDecoder();
+const str = (buf, span) => dec.decode(buf.subarray(span[0], span[1]));
+
+async function fetchTrains(){
+  const r = await fetch(SUBWAY_URL);
+  if (!r.ok) throw new Error("subway HTTP " + r.status);
+  const buf = new Uint8Array(await r.arrayBuffer());
+  const root = parseMsg(buf, 0, buf.length);
+  const out = {N: [], S: []};
+  for (const ent of root[2] || []){
+    const e = parseMsg(buf, ent[0], ent[1]);
+    if (!e[3]) continue;
+    const tu = parseMsg(buf, e[3][0][0], e[3][0][1]);
+    if (!tu[1]) continue;
+    const trip = parseMsg(buf, tu[1][0][0], tu[1][0][1]);
+    if (!trip[5] || str(buf, trip[5][0]) !== "7") continue;
+    for (const s of tu[2] || []){
+      const stu = parseMsg(buf, s[0], s[1]);
+      if (!stu[4]) continue;
+      const stopId = str(buf, stu[4][0]);
+      if (stopId !== "721N" && stopId !== "721S") continue;
+      const ev = stu[2] || stu[3];
+      if (!ev) continue;
+      const evf = parseMsg(buf, ev[0][0], ev[0][1]);
+      if (!evf[2]) continue;
+      const mins = minutesUntil(Number(evf[2][0]));
+      if (mins >= 0) out[stopId.slice(-1)].push(mins);
+    }
+  }
+  out.N.sort((a,b)=>a-b);
+  out.S.sort((a,b)=>a-b);
+  return out;
+}
+
+function fmtClock(minOfDay){
+  const h24 = Math.floor(minOfDay / 60) % 24, m = minOfDay % 60;
+  const h = h24 % 12 || 12;
+  return h + ":" + String(m).padStart(2,"0") + (h24 < 12 ? " AM" : " PM");
+}
+
+function nextFerries(){
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const isWeekend = d => d === 0 || d === 6;
+  const today = FERRY_SCHEDULE[isWeekend(now.getDay()) ? "we" : "wd"];
+  const tomorrow = FERRY_SCHEDULE[isWeekend((now.getDay()+1)%7) ? "we" : "wd"];
+  const result = {};
+  for (const dir of ["34","wall"]){
+    const upcoming = today[dir].filter(t => t >= nowMin).map(t => ({mins: t - nowMin, clock: fmtClock(t), tomorrow: false}));
+    if (upcoming.length === 0){
+      const first = tomorrow[dir][0];
+      result[dir] = [{mins: null, clock: fmtClock(first), tomorrow: true}];
+    } else {
+      result[dir] = upcoming.slice(0,2);
+    }
+  }
+  return result;
+}
+
+function busRow(route, arr){
+  const row = document.createElement("div");
+  row.className = "row";
+  if (!arr || arr.length === 0){
+    row.innerHTML = `<div><div class="route">${route}</div></div><div class="none">no buses en route</div>`;
+    return row;
+  }
+  const next = arr[0];
+  const soon = next.mins <= 3 ? " soon" : "";
+  const after = arr[1] ? `then ${arr[1].mins} min` : "no second bus yet";
+  row.innerHTML = `
+    <div>
+      <div class="route">${route}</div>
+      <div class="dest">to ${next.dest}</div>
+    </div>
+    <div class="eta${soon}">${next.mins}<small> min</small></div>
+    <div class="sub"><span>${next.dist}</span><span>${after}</span></div>`;
+  return row;
+}
+
+const BIKE_URL = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json";
+const BIKE_PRIMARY = "66dd2292-0aca-11e7-82f6-3863bb44ef7c";
+const BIKE_BACKUP = "4753c1ba-a86e-431e-94fb-06403cdee4d7";
+
+async function fetchBikes(){
+  const r = await fetch(BIKE_URL);
+  if (!r.ok) throw new Error("bike HTTP " + r.status);
+  const data = await r.json();
+  const out = {};
+  for (const s of data.data.stations){
+    if (s.station_id === BIKE_PRIMARY) out.primary = s;
+    if (s.station_id === BIKE_BACKUP) out.backup = s;
+  }
+  return out;
+}
+
+function bikeRow(b){
+  const row = document.createElement("div");
+  row.className = "row";
+  const p = b.primary, bk = b.backup;
+  if (!p){
+    row.innerHTML = `<div><div class="route bike">DOCK</div></div><div class="none">no station data</div>`;
+    return row;
+  }
+  const docks = p.num_docks_available ?? 0;
+  const cls = docks === 0 ? " empty" : docks <= 3 ? "" : " soon";
+  const backupTxt = bk ? `backup Vernon &amp; 47 Rd: ${bk.num_docks_available ?? 0} docks` : "";
+  row.innerHTML = `
+    <div>
+      <div class="route bike">DOCK</div>
+      <div class="dest">Citi Bike &middot; Vernon Blvd &amp; 50 Ave (at the 7) &middot; ${docks === 0 ? "FULL &mdash; use backup" : "open docks"}</div>
+    </div>
+    <div class="eta${cls}">${docks}<small> free</small></div>
+    <div class="sub"><span>${backupTxt}</span><span>bikes here: ${p.num_bikes_available ?? 0} (${p.num_ebikes_available ?? 0} electric)</span></div>`;
+  return row;
+}
+
+const WALK_TO_TRAIN = 8;
+
+function trainRow(mins, label){
+  const row = document.createElement("div");
+  row.className = "row";
+  const catchable = mins.filter(m => m >= WALK_TO_TRAIN);
+  if (catchable.length === 0){
+    row.innerHTML = `<div><span class="route train">7</span><div class="dest">${label} &middot; ${WALK_TO_TRAIN} min walk</div></div>
+      <div class="none">no catchable trains</div>`;
+    return row;
+  }
+  const next = catchable[0];
+  const leaveIn = next - WALK_TO_TRAIN;
+  const soon = leaveIn <= 2 ? " soon" : "";
+  const leaveTxt = leaveIn <= 0 ? "leave NOW" : `leave in ${leaveIn} min`;
+  const after = catchable.slice(1,3).map(m=>m+" min").join(", ") || "&mdash;";
+  const missed = mins.filter(m => m < WALK_TO_TRAIN);
+  const missedTxt = missed.length ? ` &middot; missing the ${missed.map(m=>m+" min").join(", ")}` : "";
+  row.innerHTML = `
+    <div>
+      <span class="route train">7</span>
+      <div class="dest">${label} &middot; ${WALK_TO_TRAIN} min walk${missedTxt}</div>
+    </div>
+    <div class="eta${soon}">${next}<small> min</small></div>
+    <div class="sub"><span>${leaveTxt}</span><span>then ${after}</span></div>`;
+  return row;
+}
+
+function ferryRow(){
+  const f = nextFerries();
+  const row = document.createElement("div");
+  row.className = "row";
+  const n34 = f["34"][0], nWall = f["wall"][0];
+  if (n34.tomorrow && nWall.tomorrow){
+    row.innerHTML = `
+      <div>
+        <div class="route ferry">FERRY</div>
+        <div class="dest">Hunters Point South &middot; East River route &middot; ~3 min walk</div>
+      </div>
+      <div class="none">done for today</div>
+      <div class="sub"><span>first to E 34 St: ${n34.clock}</span><span>first to Wall St: ${nWall.clock}</span></div>`;
+    return row;
+  }
+  const primary = (nWall.tomorrow || (!n34.tomorrow && n34.mins <= nWall.mins)) ? n34 : nWall;
+  const primaryDest = primary === n34 ? "East 34th St" : "Wall St/Pier 11";
+  const soon = primary.mins <= 5 ? " soon" : "";
+  const line34 = n34.tomorrow ? `to E 34 St: done (first ${n34.clock})` : `to E 34 St: ${f["34"].map(x=>x.mins+" min").join(", ")}`;
+  const lineWall = nWall.tomorrow ? `to Wall St: done (first ${nWall.clock})` : `to Wall St: ${f["wall"].map(x=>x.mins+" min").join(", ")}`;
+  row.innerHTML = `
+    <div>
+      <div class="route ferry">FERRY</div>
+      <div class="dest">to ${primaryDest} at ${primary.clock} &middot; scheduled &middot; ~3 min walk</div>
+    </div>
+    <div class="eta${soon}">${primary.mins}<small> min</small></div>
+    <div class="sub"><span>${line34}</span><span>${lineWall}</span></div>`;
+  return row;
+}
+
+async function load(){
+  const err = document.getElementById("err");
+  err.textContent = "";
+  const [buses, trains, bikes] = await Promise.allSettled([fetchBuses(), fetchTrains(), fetchBikes()]);
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  if (buses.status === "fulfilled"){
+    for (const route of BUS_ROUTES) board.appendChild(busRow(route, buses.value[route]));
+  } else {
+    err.textContent += "Bus data failed. ";
+  }
+  if (trains.status === "fulfilled"){
+    board.appendChild(trainRow(trains.value.N, "to Manhattan &middot; Vernon&ndash;Jackson"));
+    board.appendChild(trainRow(trains.value.S, "to Flushing &middot; Vernon&ndash;Jackson"));
+  } else {
+    err.textContent += "Train data failed. ";
+  }
+  if (bikes.status === "fulfilled"){
+    board.appendChild(bikeRow(bikes.value));
+  } else {
+    err.textContent += "Citi Bike data failed. ";
+  }
+  board.appendChild(ferryRow());
+  if (buses.status === "rejected" && trains.status === "rejected"){
+    err.textContent = "Couldn't reach MTA data. If you're viewing this inside the Claude chat preview, network requests are blocked there — download this file and open it in Safari or Chrome. Otherwise check your connection and refresh.";
+  }
+  document.getElementById("updated").textContent =
+    "updated " + new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
+}
+
+document.getElementById("refresh").addEventListener("click", load);
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
