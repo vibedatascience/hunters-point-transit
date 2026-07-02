@@ -77,6 +77,8 @@ h1{font-size:22px;font-weight:600;margin-top:4px}
 .eta small{font-size:26px;color:var(--amber-dim)}
 .sub{grid-column:1 / -1;display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px dashed #232e60;padding-top:10px;margin-top:6px}
 .none{font-family:'VT323',monospace;font-size:30px;color:var(--amber-dim);text-align:right}
+.map{width:100%;max-width:560px;margin-top:14px;background:var(--panel);border:1px solid #1d2752;border-radius:14px;overflow:hidden}
+.map svg{display:block;width:100%;height:auto}
 footer{margin-top:22px;font-size:12px;color:var(--muted);display:flex;gap:14px;align-items:center}
 button{
   background:none;border:1px solid #2a3568;color:var(--white);
@@ -97,6 +99,36 @@ button:focus-visible{outline:2px solid var(--amber)}
 </header>
 
 <div class="board" id="board"></div>
+
+<div class="map">
+<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" aria-label="Boarding points map">
+  <rect x="0" y="0" width="70" height="200" fill="#0e2a3d"/>
+  <text x="34" y="100" fill="#2da8c9" font-size="11" letter-spacing="3" transform="rotate(-90 34 100)" text-anchor="middle" opacity=".7">EAST RIVER</text>
+  <line x1="103" y1="0" x2="103" y2="200" stroke="#232e60" stroke-width="10"/>
+  <line x1="395" y1="0" x2="395" y2="200" stroke="#232e60" stroke-width="10"/>
+  <line x1="103" y1="122" x2="440" y2="122" stroke="#232e60" stroke-width="8"/>
+  <line x1="395" y1="122" x2="540" y2="40" stroke="#232e60" stroke-width="8"/>
+  <text x="110" y="188" fill="#7f88b5" font-size="10">CENTER BLVD</text>
+  <text x="402" y="188" fill="#7f88b5" font-size="10">VERNON BLVD</text>
+  <text x="230" y="136" fill="#7f88b5" font-size="10">BORDEN AV</text>
+  <text x="470" y="72" fill="#7f88b5" font-size="10" transform="rotate(-28 470 72)">JACKSON AV</text>
+  <circle cx="400" cy="114" r="10" fill="#b933ad"/>
+  <text x="400" y="118" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">7</text>
+  <text x="400" y="146" fill="#b933ad" font-size="9" text-anchor="middle">VERNON&#8211;JACKSON</text>
+  <circle cx="109" cy="122" r="6" fill="#ffb300"/>
+  <circle cx="109" cy="122" r="10" fill="none" stroke="#ffb300" opacity=".35"/>
+  <text x="109" y="105" fill="#ffb300" font-size="9" text-anchor="middle">Q101/Q103 &#8594; 7</text>
+  <text x="109" y="94" fill="#eef1ff" font-size="9" text-anchor="middle">HOME STOP</text>
+  <circle cx="440" cy="97" r="6" fill="#3ddc84"/>
+  <circle cx="440" cy="97" r="10" fill="none" stroke="#3ddc84" opacity=".35"/>
+  <text x="497" y="120" fill="#3ddc84" font-size="9" text-anchor="middle">Q101 &#8594; HOME</text>
+  <circle cx="395" cy="85" r="6" fill="#3ddc84"/>
+  <circle cx="395" cy="85" r="10" fill="none" stroke="#3ddc84" opacity=".35"/>
+  <text x="345" y="80" fill="#3ddc84" font-size="9" text-anchor="middle">Q103 &#8594; HOME</text>
+  <circle cx="86" cy="130" r="4" fill="#2da8c9"/>
+  <text x="86" y="150" fill="#2da8c9" font-size="9" text-anchor="middle">FERRY</text>
+</svg>
+</div>
 <div class="err" id="err"></div>
 
 <footer>
@@ -107,10 +139,11 @@ button:focus-visible{outline:2px solid var(--amber)}
 <script>
 const SUBWAY_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs";
 const BUS_STOPS = [
-  {route: "Q101", stopId: "MTA_700514", stopName: "Jackson Av / 50 Av"},
-  {route: "Q103", stopId: "MTA_552131", stopName: "Vernon Blvd / 49 Av"}
+  {key:"Q101-out", route:"Q101", stopId:"MTA_505506", stopName:"Center Blvd / Borden Av", leg:"home &rarr; 7 train"},
+  {key:"Q103-out", route:"Q103", stopId:"MTA_505506", stopName:"Center Blvd / Borden Av", leg:"home &rarr; 7 train"},
+  {key:"Q101-back", route:"Q101", stopId:"MTA_700514", stopName:"Jackson Av / 50 Av", leg:"7 train &rarr; home"},
+  {key:"Q103-back", route:"Q103", stopId:"MTA_552131", stopName:"Vernon Blvd / 49 Av", leg:"7 train &rarr; home"}
 ];
-const BUS_ROUTES = BUS_STOPS.map(s => s.route);
 
 const FERRY_SCHEDULE = {"wd":{"34":[366,391,416,440,465,490,514,539,564,588,613,665,702,739,776,813,850,887,924,961,994,1024,1054,1081,1111,1141,1168,1208,1245,1282,1319],"wall":[380,405,430,454,479,504,528,553,578,602,630,682,719,756,793,830,867,904,941,979,1012,1042,1072,1099,1129,1159,1186,1203,1225,1262]},"we":{"34":[560,622,652,680,706,732,758,784,810,836,862,888,914,962,988,1014,1040,1066,1092,1118,1144,1170,1196,1222,1248,1274,1310],"wall":[553,611,651,684,712,738,764,790,816,842,868,894,920,957,994,1020,1046,1072,1098,1124,1150,1176,1202,1228,1266]}};
 
@@ -120,13 +153,18 @@ function minutesUntil(epochOrIso){
 }
 
 async function fetchBuses(){
-  const byRoute = {};
-  await Promise.all(BUS_STOPS.map(async (cfg) => {
-    const r = await fetch("https://bustime.mta.info/api/stop-for-id?stopId=" + cfg.stopId);
+  const ids = [...new Set(BUS_STOPS.map(s => s.stopId))];
+  const cache = {};
+  await Promise.all(ids.map(async (id) => {
+    const r = await fetch("https://bustime.mta.info/api/stop-for-id?stopId=" + id);
     if (!r.ok) throw new Error("bus HTTP " + r.status);
     const data = await r.json();
-    const visits = data?.siri?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
-    for (const v of visits){
+    cache[id] = data?.siri?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
+  }));
+  const byKey = {};
+  for (const cfg of BUS_STOPS){
+    const list = [];
+    for (const v of cache[cfg.stopId]){
       const j = v.MonitoredVehicleJourney;
       if (j.PublishedLineName !== cfg.route) continue;
       const call = j.MonitoredCall || {};
@@ -134,16 +172,16 @@ async function fetchBuses(){
       if (!t) continue;
       const mins = minutesUntil(t);
       if (mins < -1) continue;
-      (byRoute[cfg.route] ||= []).push({
+      list.push({
         mins: Math.max(mins, 0),
         dest: j.DestinationName || "",
-        dist: call.Extensions?.Distances?.PresentableDistance || "",
-        stopName: cfg.stopName
+        dist: call.Extensions?.Distances?.PresentableDistance || ""
       });
     }
-  }));
-  for (const k in byRoute) byRoute[k].sort((a,b)=>a.mins-b.mins);
-  return byRoute;
+    list.sort((a,b)=>a.mins-b.mins);
+    byKey[cfg.key] = list;
+  }
+  return byKey;
 }
 
 function readVarint(buf, pos){
@@ -230,12 +268,11 @@ function nextFerries(){
   return result;
 }
 
-function busRow(route, arr){
+function busRow(cfg, arr){
   const row = document.createElement("div");
   row.className = "row";
   if (!arr || arr.length === 0){
-    const cfg = BUS_STOPS.find(s => s.route === route);
-    row.innerHTML = `<div><div class="route">${route}</div><div class="dest">from ${cfg ? cfg.stopName : ""} (at 7 train)</div></div><div class="none">no buses en route</div>`;
+    row.innerHTML = `<div><div class="route">${cfg.route}</div><div class="dest">${cfg.leg} &middot; ${cfg.stopName}</div></div><div class="none">no buses en route</div>`;
     return row;
   }
   const next = arr[0];
@@ -243,8 +280,8 @@ function busRow(route, arr){
   const after = arr[1] ? `then ${arr[1].mins} min` : "no second bus yet";
   row.innerHTML = `
     <div>
-      <div class="route">${route}</div>
-      <div class="dest">from ${next.stopName} (at 7 train) &rarr; ${next.dest}</div>
+      <div class="route">${cfg.route}</div>
+      <div class="dest">${cfg.leg} &middot; board at ${cfg.stopName}</div>
     </div>
     <div class="eta${soon}">${next.mins}<small> min</small></div>
     <div class="sub"><span>${next.dist}</span><span>${after}</span></div>`;
@@ -370,7 +407,7 @@ async function load(){
   const board = document.getElementById("board");
   board.innerHTML = "";
   if (buses.status === "fulfilled"){
-    for (const route of BUS_ROUTES) board.appendChild(busRow(route, buses.value[route]));
+    for (const cfg of BUS_STOPS) board.appendChild(busRow(cfg, buses.value[cfg.key]));
   } else {
     err.textContent += "Bus data failed. ";
   }
