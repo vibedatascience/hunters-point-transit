@@ -105,9 +105,12 @@ button:focus-visible{outline:2px solid var(--amber)}
 </footer>
 
 <script>
-const BUS_URL = "https://bustime.mta.info/api/stop-for-id?stopId=MTA_505506";
 const SUBWAY_URL = "https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2Fgtfs";
-const BUS_ROUTES = ["Q101","Q103"];
+const BUS_STOPS = [
+  {route: "Q101", stopId: "MTA_700514", stopName: "Jackson Av / 50 Av"},
+  {route: "Q103", stopId: "MTA_552131", stopName: "Vernon Blvd / 49 Av"}
+];
+const BUS_ROUTES = BUS_STOPS.map(s => s.route);
 
 const FERRY_SCHEDULE = {"wd":{"34":[366,391,416,440,465,490,514,539,564,588,613,665,702,739,776,813,850,887,924,961,994,1024,1054,1081,1111,1141,1168,1208,1245,1282,1319],"wall":[380,405,430,454,479,504,528,553,578,602,630,682,719,756,793,830,867,904,941,979,1012,1042,1072,1099,1129,1159,1186,1203,1225,1262]},"we":{"34":[560,622,652,680,706,732,758,784,810,836,862,888,914,962,988,1014,1040,1066,1092,1118,1144,1170,1196,1222,1248,1274,1310],"wall":[553,611,651,684,712,738,764,790,816,842,868,894,920,957,994,1020,1046,1072,1098,1124,1150,1176,1202,1228,1266]}};
 
@@ -117,25 +120,28 @@ function minutesUntil(epochOrIso){
 }
 
 async function fetchBuses(){
-  const r = await fetch(BUS_URL);
-  if (!r.ok) throw new Error("bus HTTP " + r.status);
-  const data = await r.json();
-  const visits = data?.siri?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
   const byRoute = {};
-  for (const v of visits){
-    const j = v.MonitoredVehicleJourney;
-    if (!BUS_ROUTES.includes(j.PublishedLineName)) continue;
-    const call = j.MonitoredCall || {};
-    const t = call.ExpectedArrivalTime || call.ExpectedDepartureTime || call.AimedArrivalTime || j.OriginAimedDepartureTime;
-    if (!t) continue;
-    const mins = minutesUntil(t);
-    if (mins < -1) continue;
-    (byRoute[j.PublishedLineName] ||= []).push({
-      mins: Math.max(mins, 0),
-      dest: j.DestinationName || "",
-      dist: call.Extensions?.Distances?.PresentableDistance || ""
-    });
-  }
+  await Promise.all(BUS_STOPS.map(async (cfg) => {
+    const r = await fetch("https://bustime.mta.info/api/stop-for-id?stopId=" + cfg.stopId);
+    if (!r.ok) throw new Error("bus HTTP " + r.status);
+    const data = await r.json();
+    const visits = data?.siri?.Siri?.ServiceDelivery?.StopMonitoringDelivery?.[0]?.MonitoredStopVisit || [];
+    for (const v of visits){
+      const j = v.MonitoredVehicleJourney;
+      if (j.PublishedLineName !== cfg.route) continue;
+      const call = j.MonitoredCall || {};
+      const t = call.ExpectedArrivalTime || call.ExpectedDepartureTime || call.AimedArrivalTime || j.OriginAimedDepartureTime;
+      if (!t) continue;
+      const mins = minutesUntil(t);
+      if (mins < -1) continue;
+      (byRoute[cfg.route] ||= []).push({
+        mins: Math.max(mins, 0),
+        dest: j.DestinationName || "",
+        dist: call.Extensions?.Distances?.PresentableDistance || "",
+        stopName: cfg.stopName
+      });
+    }
+  }));
   for (const k in byRoute) byRoute[k].sort((a,b)=>a.mins-b.mins);
   return byRoute;
 }
@@ -228,7 +234,8 @@ function busRow(route, arr){
   const row = document.createElement("div");
   row.className = "row";
   if (!arr || arr.length === 0){
-    row.innerHTML = `<div><div class="route">${route}</div></div><div class="none">no buses en route</div>`;
+    const cfg = BUS_STOPS.find(s => s.route === route);
+    row.innerHTML = `<div><div class="route">${route}</div><div class="dest">from ${cfg ? cfg.stopName : ""} (at 7 train)</div></div><div class="none">no buses en route</div>`;
     return row;
   }
   const next = arr[0];
@@ -237,7 +244,7 @@ function busRow(route, arr){
   row.innerHTML = `
     <div>
       <div class="route">${route}</div>
-      <div class="dest">to ${next.dest}</div>
+      <div class="dest">from ${next.stopName} (at 7 train) &rarr; ${next.dest}</div>
     </div>
     <div class="eta${soon}">${next.mins}<small> min</small></div>
     <div class="sub"><span>${next.dist}</span><span>${after}</span></div>`;
