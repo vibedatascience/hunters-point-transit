@@ -85,7 +85,7 @@ h1{font-size:22px;font-weight:600;margin-top:4px}
 .dockline .low{color:var(--amber)}
 .dockline .bad{color:#ff5b5b}
 .dockline span:nth-child(2),.dockline span:nth-child(3){font-family:'VT323',monospace;font-size:19px;text-align:right}
-.map{width:100%;max-width:560px;margin-top:14px;background:var(--panel);border:1px solid #1d2752;border-radius:14px;overflow:hidden}
+.map{width:100%;max-width:620px;margin-top:14px;background:var(--panel);border:1px solid #1d2752;border-radius:14px;overflow:hidden}
 .map svg{display:block;width:100%;height:auto}
 footer{margin-top:22px;font-size:12px;color:var(--muted);display:flex;gap:14px;align-items:center}
 button{
@@ -109,32 +109,55 @@ button:focus-visible{outline:2px solid var(--amber)}
 <div class="board" id="board"></div>
 
 <div class="map">
-<svg viewBox="0 0 560 200" xmlns="http://www.w3.org/2000/svg" aria-label="Boarding points map">
-  <rect x="0" y="0" width="70" height="200" fill="#0e2a3d"/>
-  <text x="34" y="100" fill="#2da8c9" font-size="11" letter-spacing="3" transform="rotate(-90 34 100)" text-anchor="middle" opacity=".7">EAST RIVER</text>
-  <line x1="103" y1="0" x2="103" y2="200" stroke="#232e60" stroke-width="10"/>
-  <line x1="395" y1="0" x2="395" y2="200" stroke="#232e60" stroke-width="10"/>
-  <line x1="103" y1="122" x2="440" y2="122" stroke="#232e60" stroke-width="8"/>
-  <line x1="395" y1="122" x2="540" y2="40" stroke="#232e60" stroke-width="8"/>
-  <text x="110" y="188" fill="#7f88b5" font-size="10">CENTER BLVD</text>
-  <text x="402" y="188" fill="#7f88b5" font-size="10">VERNON BLVD</text>
-  <text x="230" y="136" fill="#7f88b5" font-size="10">BORDEN AV</text>
-  <text x="470" y="72" fill="#7f88b5" font-size="10" transform="rotate(-28 470 72)">JACKSON AV</text>
-  <circle cx="400" cy="114" r="10" fill="#b933ad"/>
-  <text x="400" y="118" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">7</text>
-  <text x="400" y="146" fill="#b933ad" font-size="9" text-anchor="middle">VERNON&#8211;JACKSON</text>
-  <circle cx="109" cy="122" r="6" fill="#ffb300"/>
-  <circle cx="109" cy="122" r="10" fill="none" stroke="#ffb300" opacity=".35"/>
-  <text x="109" y="105" fill="#ffb300" font-size="9" text-anchor="middle">Q101/Q103 &#8594; 7</text>
-  <text x="109" y="94" fill="#eef1ff" font-size="9" text-anchor="middle">HOME STOP</text>
-  <circle cx="440" cy="97" r="6" fill="#3ddc84"/>
-  <circle cx="440" cy="97" r="10" fill="none" stroke="#3ddc84" opacity=".35"/>
-  <text x="497" y="120" fill="#3ddc84" font-size="9" text-anchor="middle">Q101 &#8594; HOME</text>
-  <circle cx="395" cy="85" r="6" fill="#3ddc84"/>
-  <circle cx="395" cy="85" r="10" fill="none" stroke="#3ddc84" opacity=".35"/>
-  <text x="345" y="80" fill="#3ddc84" font-size="9" text-anchor="middle">Q103 &#8594; HOME</text>
-  <circle cx="86" cy="130" r="4" fill="#2da8c9"/>
-  <text x="86" y="150" fill="#2da8c9" font-size="9" text-anchor="middle">FERRY</text>
+<svg viewBox="0 0 620 429" xmlns="http://www.w3.org/2000/svg" aria-label="Boarding points and dock map">
+<path d="M0,429 L187.0,0.0 L147.6,117.0 L86.1,247.0 L81.2,377.0 L64.0,429.0 L0,0 Z" fill="#0e2a3d"/>
+<text x="20" y="214.5" fill="#2da8c9" font-size="10" letter-spacing="3" transform="rotate(-75 20 214.5)" text-anchor="middle" opacity=".7">EAST RIVER</text>
+<path d="M86.1,429.0 L103.5,384.3 L138.2,249.0 L157.1,184.2 L211.6,91.0 L260.8,26.0" fill="none" stroke="#232e60" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M418.3,403.0 L427.1,251.5 L430.9,190.1 L437.9,13.0" fill="none" stroke="#232e60" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M420.7,295.8 L476.3,250.9 L620.0,143.0" fill="none" stroke="#232e60" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M276.5,351.0 L305.1,248.7 L340.9,119.4 L361.7,39.0" fill="none" stroke="#232e60" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M138.2,249.0 L285.4,312.0 L408.4,365.3" fill="none" stroke="#232e60" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M157.1,184.2 L305.1,248.7 L420.7,293.8" fill="none" stroke="#232e60" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M314.9,201.5 L427.1,251.5 L476.3,250.9" fill="none" stroke="#232e60" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M258.9,75.5 L340.9,119.4 L383.8,143.0" fill="none" stroke="#232e60" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="115.6" y="331.5" fill="#59629b" font-size="8.5" transform="rotate(-75 115.6 331.5)" text-anchor="middle">CENTER BLVD</text>
+<text x="396.1" y="325.0" fill="#59629b" font-size="8.5" transform="rotate(-86 396.1 325.0)" text-anchor="middle">VERNON BLVD</text>
+<text x="558.5" y="178.7" fill="#59629b" font-size="8.5" transform="rotate(-33 558.5 178.7)" text-anchor="middle">JACKSON AV</text>
+<text x="330.7" y="182.0" fill="#59629b" font-size="8.5" transform="rotate(-72 330.7 182.0)" text-anchor="middle">5 ST</text>
+<text x="219.0" y="308.8" fill="#59629b" font-size="8.5" transform="rotate(17 219.0 308.8)" text-anchor="middle">BORDEN AV</text>
+<text x="243.6" y="243.8" fill="#59629b" font-size="8.5" transform="rotate(18 243.6 243.8)" text-anchor="middle">51 AV</text>
+<text x="374.0" y="217.8" fill="#59629b" font-size="8.5" transform="rotate(18 374.0 217.8)" text-anchor="middle">50 AV</text>
+<text x="302.6" y="81.2" fill="#59629b" font-size="8.5" transform="rotate(22 302.6 81.2)" text-anchor="middle">48 AV</text>
+<circle cx="103.5" cy="384.3" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="103.5" cy="384.3" r="1.6" fill="#2da8c9"/>
+<circle cx="157.1" cy="184.2" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="157.1" cy="184.2" r="1.6" fill="#2da8c9"/>
+<circle cx="305.1" cy="248.7" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="305.1" cy="248.7" r="1.6" fill="#2da8c9"/>
+<circle cx="427.2" cy="251.7" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="427.2" cy="251.7" r="1.6" fill="#2da8c9"/>
+<circle cx="476.3" cy="250.9" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="476.3" cy="250.9" r="1.6" fill="#2da8c9"/>
+<circle cx="340.9" cy="119.4" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="340.9" cy="119.4" r="1.6" fill="#2da8c9"/>
+<circle cx="258.9" cy="75.5" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/>
+<circle cx="258.9" cy="75.5" r="1.6" fill="#2da8c9"/>
+<circle cx="453.6" cy="232.3" r="9" fill="#b933ad"/><text x="453.6" y="235.8" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">7</text>
+<text x="451.6" y="253.3" fill="#b933ad" font-size="8" text-anchor="middle">VERNON&#8211;JACKSON</text>
+<circle cx="138.2" cy="249.0" r="5.5" fill="#ffb300"/><circle cx="138.2" cy="249.0" r="9.5" fill="none" stroke="#ffb300" opacity=".35"/>
+<text x="126.19999999999999" y="235.0" fill="#ffb300" font-size="8" text-anchor="end">Q101/Q103 &#8594; 7</text>
+<text x="126.19999999999999" y="244.0" fill="#eef1ff" font-size="8" text-anchor="end">HOME STOP</text>
+<circle cx="496.0" cy="230.5" r="5.5" fill="#3ddc84"/><circle cx="496.0" cy="230.5" r="9.5" fill="none" stroke="#3ddc84" opacity=".35"/>
+<text x="508.0" y="243.5" fill="#3ddc84" font-size="8">Q101 &#8594; HOME</text>
+<circle cx="430.9" cy="190.1" r="5.5" fill="#3ddc84"/><circle cx="430.9" cy="190.1" r="9.5" fill="none" stroke="#3ddc84" opacity=".35"/>
+<text x="418.9" y="182.1" fill="#3ddc84" font-size="8" text-anchor="end">Q103 &#8594; HOME</text>
+<circle cx="64.0" cy="256.8" r="4" fill="#2da8c9"/>
+<text x="62.0" y="271.8" fill="#2da8c9" font-size="8" text-anchor="middle">FERRY</text>
+<g font-size="8.5">
+<circle cx="470" cy="16" r="4.5" fill="#11183a" stroke="#2da8c9" stroke-width="1.6"/><circle cx="470" cy="16" r="1.6" fill="#2da8c9"/><text x="480" y="19" fill="#7f88b5">Citi Bike dock</text>
+<circle cx="470" cy="32" r="4.5" fill="#ffb300"/><text x="480" y="35" fill="#7f88b5">bus &#8594; 7 train</text>
+<circle cx="470" cy="48" r="4.5" fill="#3ddc84"/><text x="480" y="51" fill="#7f88b5">bus &#8594; home</text>
+</g>
 </svg>
 </div>
 <div class="err" id="err"></div>
