@@ -77,6 +77,14 @@ h1{font-size:22px;font-weight:600;margin-top:4px}
 .eta small{font-size:26px;color:var(--amber-dim)}
 .sub{grid-column:1 / -1;display:flex;justify-content:space-between;font-size:13px;color:var(--muted);border-top:1px dashed #232e60;padding-top:10px;margin-top:6px}
 .none{font-family:'VT323',monospace;font-size:30px;color:var(--amber-dim);text-align:right}
+.dockgrid{grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;border-top:1px dashed #232e60;padding-top:10px;margin-top:6px}
+.dockline{display:grid;grid-template-columns:1fr 110px 90px;gap:8px;font-size:13px;align-items:baseline}
+.dockline .dockname{color:var(--muted)}
+.dockline em{font-style:normal;color:#2da8c9;font-size:11px}
+.dockline .ok{color:var(--soon)}
+.dockline .low{color:var(--amber)}
+.dockline .bad{color:#ff5b5b}
+.dockline span:nth-child(2),.dockline span:nth-child(3){font-family:'VT323',monospace;font-size:19px;text-align:right}
 .map{width:100%;max-width:560px;margin-top:14px;background:var(--panel);border:1px solid #1d2752;border-radius:14px;overflow:hidden}
 .map svg{display:block;width:100%;height:auto}
 footer{margin-top:22px;font-size:12px;color:var(--muted);display:flex;gap:14px;align-items:center}
@@ -289,39 +297,48 @@ function busRow(cfg, arr){
 }
 
 const BIKE_URL = "https://gbfs.citibikenyc.com/gbfs/en/station_status.json";
-const BIKE_PRIMARY = "66dd2292-0aca-11e7-82f6-3863bb44ef7c";
-const BIKE_BACKUP = "4753c1ba-a86e-431e-94fb-06403cdee4d7";
+const BIKE_STATIONS = [
+  {id:"1880644037244334512", name:"55 Ave &amp; Center Blvd", tag:"home"},
+  {id:"40eaa69a-d3ab-48fc-b395-b5bdc6a1aa85", name:"5 St &amp; 51 Ave", tag:""},
+  {id:"79399e32-a6c6-4732-8ad4-9f9140a86b21", name:"Center Blvd &amp; 51 Ave", tag:""},
+  {id:"66dd2292-0aca-11e7-82f6-3863bb44ef7c", name:"Vernon Blvd &amp; 50 Ave", tag:"at 7"},
+  {id:"2143217922777170632", name:"Jackson Ave &amp; 50 Ave", tag:"at 7"},
+  {id:"66dd243c-0aca-11e7-82f6-3863bb44ef7c", name:"48 Ave &amp; 5 St", tag:""},
+  {id:"c3d5f47f-cfc3-4c1f-86bb-bcf770d2949b", name:"Center Blvd &amp; 48 Ave", tag:""}
+];
 
 async function fetchBikes(){
   const r = await fetch(BIKE_URL);
   if (!r.ok) throw new Error("bike HTTP " + r.status);
   const data = await r.json();
-  const out = {};
-  for (const s of data.data.stations){
-    if (s.station_id === BIKE_PRIMARY) out.primary = s;
-    if (s.station_id === BIKE_BACKUP) out.backup = s;
-  }
-  return out;
+  const byId = {};
+  for (const s of data.data.stations) byId[s.station_id] = s;
+  return BIKE_STATIONS.map(cfg => ({cfg, st: byId[cfg.id]}));
 }
 
-function bikeRow(b){
+function bikeRow(list){
   const row = document.createElement("div");
   row.className = "row";
-  const p = b.primary, bk = b.backup;
-  if (!p){
+  if (!list || !list.length || list.every(x=>!x.st)){
     row.innerHTML = `<div><div class="route bike">DOCK</div></div><div class="none">no station data</div>`;
     return row;
   }
-  const docks = p.num_docks_available ?? 0;
-  const cls = docks === 0 ? " empty" : docks <= 3 ? "" : " soon";
-  const backupTxt = bk ? `backup Vernon &amp; 47 Rd: ${bk.num_docks_available ?? 0} docks` : "";
+  const lines = list.map(({cfg, st}) => {
+    if (!st) return "";
+    const bikes = st.num_bikes_available ?? 0;
+    const e = st.num_ebikes_available ?? 0;
+    const docks = st.num_docks_available ?? 0;
+    const bCls = bikes === 0 ? "bad" : bikes <= 2 ? "low" : "ok";
+    const dCls = docks === 0 ? "bad" : docks <= 2 ? "low" : "ok";
+    const tag = cfg.tag ? ` <em>${cfg.tag}</em>` : "";
+    return `<div class="dockline"><span class="dockname">${cfg.name}${tag}</span><span class="${bCls}">${bikes} bikes (${e}e)</span><span class="${dCls}">${docks} docks</span></div>`;
+  }).join("");
   row.innerHTML = `
     <div>
       <div class="route bike">DOCK</div>
-      <div class="dest">Citi Bike &middot; Vernon Blvd &amp; 50 Ave (at the 7) &middot; ${docks === 0 ? "FULL &mdash; use backup" : "open docks"}</div>
+      <div class="dest">Citi Bike &middot; nearby stations &middot; bikes (electric) &middot; free docks</div>
     </div>
-    <div class="eta${cls}">${docks}<small> free</small></div>
-    <div class="sub"><span>${backupTxt}</span><span>bikes here: ${p.num_bikes_available ?? 0} (${p.num_ebikes_available ?? 0} electric)</span></div>`;
+    <div class="dockgrid">${lines}</div>`;
   return row;
 }
 
